@@ -1,0 +1,90 @@
+# ============================================================
+# FLOW WORKFLOW
+# Builds and runs the C++ application on every push/PR.
+# Setting.toml is the single source of truth for configuration.
+# ============================================================
+
+name: CI Flow
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ----------------------------------------------------------
+  # Job 1: Read Setting.toml once and expose required values.
+  # ----------------------------------------------------------
+  load_config:
+    name: Load Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      executable: ${{ steps.config.outputs.executable }}
+      output_file: ${{ steps.config.outputs.output_file }}
+      artifact_name: ${{ steps.config.outputs.artifact_name }}
+      retention_days: ${{ steps.config.outputs.retention_days }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read Setting.toml
+        id: config
+        shell: bash
+        run: |
+          python3 <<'PY'
+          import os
+          import tomllib
+
+          with open("config/Setting.toml", "rb") as f:
+              config = tomllib.load(f)
+
+          build = config["build"]
+          output = config["output"]
+          artifact = config["artifact"]
+
+          values = {
+              "executable": build["executable"],
+              "output_file": output["file"],
+              "artifact_name": output["artifact_name"],
+              "retention_days": str(artifact["retention_days"]),
+          }
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              for key, value in values.items():
+                  out.write(f"{key}={value}\n")
+          PY
+
+  # ----------------------------------------------------------
+  # Job 2: Compile, execute and upload the generated file.
+  # ----------------------------------------------------------
+  build_and_run:
+    name: Build and Run C++
+    needs: load_config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install compiler
+        run: sudo apt-get update && sudo apt-get install -y g++
+
+      - name: Compile C++ application
+        run: g++ -std=c++17 src/main.cpp -o "${{ needs.load_config.outputs.executable }}"
+
+      - name: Run application
+        run: ./${{ needs.load_config.outputs.executable }}
+
+      - name: Verify generated file
+        run: |
+          test -f "${{ needs.load_config.outputs.output_file }}"
+          echo "Generated file found: ${{ needs.load_config.outputs.output_file }}"
+          cat "${{ needs.load_config.outputs.output_file }}"
+
+      - name: Upload generated artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.load_config.outputs.artifact_name }}
+          path: ${{ needs.load_config.outputs.output_file }}
+          retention-days: ${{ needs.load_config.outputs.retention_days }}
