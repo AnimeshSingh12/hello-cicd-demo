@@ -1,0 +1,23 @@
+# ============================================================
+# CI/CD Configuration - Single Source of Truth
+# ============================================================
+
+[application]
+name = "HelloGenerator"
+version = "1.0.0"
+
+[build]
+source = "src/main.cpp"
+executable = "hello_generator"
+compiler = "g++"
+
+[output]
+file = "hello.txt"
+artifact_name = "hello-artifact"
+
+[artifact]
+retention_days = 7
+
+[release]
+release_name = "Hello Generator Release"
+tag_prefix = "v"
