@@ -28,7 +28,7 @@ jobs:
       release_name: ${{ steps.config.outputs.release_name }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Read Setting.toml
         id: config
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install compiler
         run: sudo apt-get update && sudo apt-get install -y g++
