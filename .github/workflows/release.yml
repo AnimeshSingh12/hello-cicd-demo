@@ -1,0 +1,87 @@
+# ============================================================
+# RELEASE WORKFLOW
+# Trigger: push a tag such as v1.0.0
+# Builds/runs the application and creates a GitHub Release.
+# ============================================================
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ----------------------------------------------------------
+  # Read release/build configuration from Setting.toml.
+  # ----------------------------------------------------------
+  load_config:
+    name: Load Release Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      executable: ${{ steps.config.outputs.executable }}
+      output_file: ${{ steps.config.outputs.output_file }}
+      release_name: ${{ steps.config.outputs.release_name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read Setting.toml
+        id: config
+        shell: bash
+        run: |
+          python3 <<'PY'
+          import os
+          import tomllib
+
+          with open("config/Setting.toml", "rb") as f:
+              config = tomllib.load(f)
+
+          values = {
+              "executable": config["build"]["executable"],
+              "output_file": config["output"]["file"],
+              "release_name": config["release"]["release_name"],
+          }
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              for key, value in values.items():
+                  out.write(f"{key}={value}\n")
+          PY
+
+  # ----------------------------------------------------------
+  # Build, execute and publish the generated file as a release.
+  # ----------------------------------------------------------
+  release:
+    name: Build and Create GitHub Release
+    needs: load_config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install compiler
+        run: sudo apt-get update && sudo apt-get install -y g++
+
+      - name: Compile C++ application
+        run: g++ -std=c++17 src/main.cpp -o "${{ needs.load_config.outputs.executable }}"
+
+      - name: Run application
+        run: ./${{ needs.load_config.outputs.executable }}
+
+      - name: Verify generated file
+        run: |
+          test -f "${{ needs.load_config.outputs.output_file }}"
+          cat "${{ needs.load_config.outputs.output_file }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            "${{ needs.load_config.outputs.output_file }}" \
+            --title "${{ needs.load_config.outputs.release_name }} ${GITHUB_REF_NAME}" \
+            --generate-notes
