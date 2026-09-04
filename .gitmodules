@@ -1,0 +1,3 @@
+[submodule "libs/hello-library"]
+	path = libs/hello-library
+	url = https://github.com/AnimeshSingh12/hello-library.git
