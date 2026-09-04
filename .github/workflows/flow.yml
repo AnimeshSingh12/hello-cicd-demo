@@ -27,7 +27,7 @@ jobs:
       retention_days: ${{ steps.config.outputs.retention_days }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Read Setting.toml
         id: config
@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install compiler
         run: sudo apt-get update && sudo apt-get install -y g++
@@ -83,7 +83,7 @@ jobs:
           cat "${{ needs.load_config.outputs.output_file }}"
 
       - name: Upload generated artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ needs.load_config.outputs.artifact_name }}
           path: ${{ needs.load_config.outputs.output_file }}
